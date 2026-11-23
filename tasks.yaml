@@ -46,7 +46,7 @@ tasks:
       - task: create:test-bundle
       - task: deploy:test-bundle
 
-#### Template CI: Remove this block and the ci-setup call when building a package ####
+#### Template CI: Remove this block and both CI task calls when building a package ####
   - name: ci-setup
     description: Populate template with podinfo values for CI validation
     actions:
@@ -73,32 +73,103 @@ tasks:
               s|#UDS_PACKAGE_REPO#|https://github.com/stefanprodan/podinfo|g;
             "
 
-          # Patch common/zarf.yaml
-          ./zarf tools yq -i ".components[0].charts[1].version = \"${CHART_VERSION}\"" common/zarf.yaml
-          ./zarf tools yq -i 'del(.components[0].charts[1].gitPath)' common/zarf.yaml
-          ./zarf tools yq -i '.components[0].charts[1].values[0].excludePaths |= (. + [".podinfo.redis", ".podinfo.serviceAccount.imagePullSecrets"] | unique)' common/zarf.yaml
+          # Pin the upstream OCI chart and image to the same Podinfo release.
+          CHART_URL="$CHART_URL" CHART_VERSION="$CHART_VERSION" ./zarf tools yq -i '
+            del(.component.charts[1].git) |
+            .component.charts[1].oci = {"url": strenv(CHART_URL), "ref": {"tag": strenv(CHART_VERSION)}} |
+            .component.charts[1].values[0].excludePaths |= (. + [".podinfo.redis", ".podinfo.serviceAccount.imagePullSecrets"] | unique)
+          ' common/zarf.yaml
+          APP_IMAGE="$APP_IMAGE" ./zarf tools yq -i '
+            (.components[] | select(.selector.flavor == "upstream")).images = [{"name": strenv(APP_IMAGE)}]
+            | .metadata.annotations."dev.uds.tagline" = "Demo application for testing Kubernetes deployments."
+            | .metadata.annotations."dev.uds.categories" = "Development, Testing"
+            | .metadata.annotations."dev.uds.keywords" = "Kubernetes, Demo, Podinfo"
+          ' zarf.yaml
 
-          # Patch zarf.yaml, set podinfo image
-          ./zarf tools yq -i "(.components[] | select(.only.flavor == \"upstream\")).images = [\"${APP_IMAGE}\"]" zarf.yaml
-          ./zarf tools yq -i 'del(.components[] | select(.only.flavor == "unicorn"))' zarf.yaml
-          ./zarf tools yq -i 'del(.components[] | select(.only.flavor == "registry1"))' zarf.yaml
-          ./zarf tools yq -i '.variables = [{"name": "DOMAIN", "default": "uds.dev"}]' zarf.yaml
+          # Podinfo uses Authservice and a dedicated metrics port.
+          perl -i -0pe 's|(  # Customize network policies and expose services via istio)|  sso:\n    - name: Podinfo Login\n      clientId: uds-demo-podinfo\n      redirectUris:\n        - "https://podinfo.uds.dev/login"\n      enableAuthserviceSelector:\n        app.kubernetes.io/name: podinfo\n  monitor:\n    - kind: PodMonitor\n      description: podinfo-metrics\n      selector:\n        app.kubernetes.io/name: podinfo\n      targetPort: 9797\n      portName: http-metrics\n$1|' chart/templates/uds-package.yaml
+          perl -pi -e 's/^          app: podinfo$/          app.kubernetes.io\/name: podinfo/' chart/templates/uds-package.yaml
 
-          # Patch uds-package.yaml: add SSO + Authservice (podinfo has no native OIDC), allow-all network policy
-          perl -i -0pe 's|(  # Customize network policies and expose services via istio)|  sso:\n    - name: Podinfo\n      clientId: uds-podinfo\n      redirectUris:\n        - "https://podinfo.uds.dev/login"\n      enableAuthserviceSelector:\n        app.kubernetes.io/name: podinfo\n$1|' chart/templates/uds-package.yaml
-          perl -pi -e 's/remoteGenerated: IntraNamespace/remoteGenerated: Anywhere/g' chart/templates/uds-package.yaml
+          # Podinfo has no application dependency that needs namespace-wide traffic.
+          perl -i -0pe 's~    allow:\n.*?      \{\{ toYaml \. \| nindent 6 \}\}\n      \{\{- end \}\}~    {{- with .Values.additionalNetworkAllow }}\n    allow:\n      {{ toYaml . | nindent 6 }}\n    {{- end }}~s' chart/templates/uds-package.yaml
+
+          # Run with the image’s non-root identity and deny privilege escalation.
+          ./zarf tools yq -i '
+            .securityContext = {
+              "runAsNonRoot": true,
+              "runAsUser": 100,
+              "runAsGroup": 101,
+              "allowPrivilegeEscalation": false,
+              "capabilities": {"drop": ["ALL"]},
+              "seccompProfile": {"type": "RuntimeDefault"}
+            }
+          ' values/common-values.yaml
 
           # Point auth.setup.ts at the root path (Authservice intercepts all routes)
           perl -pi -e 's|/example/endpoint|/|g' tests/auth.setup.ts
 
           # Rename template test file
-          mv tests/template-application-name.test.ts "tests/${APP_NAME}.test.ts" 2>/dev/null || true
+          mv tests/template-application-name.test.ts "tests/${APP_NAME}.test.ts"
+          perl -pi -e 's@page.goto\(\x27/\x27\)@page.goto("/version")@; s@  expect\(response\?\.status\(\)\)\.toBeLessThan\(400\);@  expect(response?.status()).toBe(200);\n  expect(await response?.text()).toContain("6.7.1");@; s/homepage loads/Podinfo returns its packaged version/' "tests/${APP_NAME}.test.ts"
+
+          cat > docs/justifications.md <<'EOF'
+          # Podinfo integration decisions
+
+          Podinfo has no native OIDC integration, so the Package resource protects the
+          tenant route through UDS Core Authservice. The package uses Ambient mode and
+          declares no policy exemptions. Podinfo has no external service dependency in
+          the CI configuration. The operator configures ingress for the tenant route and
+          monitoring access to the dedicated metrics port.
+          EOF
 
           echo "CI setup complete: template populated with ${APP_NAME} values"
 
       - task: lint:values-generate
+        with:
+          flavor: upstream
 
-#### Template CI: Remove this block and the ci-setup call when building a package ####
+  - name: ci-check-package
+    description: Inspect the Podinfo archive produced by the template
+    actions:
+      - cmd: |
+          set -eu
+          archive="zarf-package-podinfo-${UDS_ARCH}-0.0.0-dev-upstream.tar.zst"
+          inspection=$(mktemp -d)
+          trap 'rm -rf "$inspection"' EXIT
+
+          ./zarf dev lint --flavor upstream .
+          ./zarf package inspect manifests "$archive" > "$inspection/manifests.yaml"
+          ./zarf package inspect images "$archive" > "$inspection/images.yaml"
+          ./zarf package inspect documentation "$archive" --output "$inspection"
+
+          ./zarf tools yq -e 'any_c(. == "ghcr.io/stefanprodan/podinfo:6.7.1")' "$inspection/images.yaml"
+          ./zarf tools yq -e 'select((.kind == "Package") and (.metadata.name == "podinfo"))' \
+            "$inspection/manifests.yaml" > "$inspection/package.yaml"
+          ./zarf tools yq -e '
+            [
+              (.spec.network.serviceMesh.mode == "ambient"),
+              (.spec.network.expose[0].selector."app.kubernetes.io/name" == "podinfo"),
+              ((.spec.network.allow | length) == 0),
+              (.spec.sso[0].enableAuthserviceSelector."app.kubernetes.io/name" == "podinfo"),
+              (.spec.monitor[0].targetPort == 9797),
+              (.spec.monitor[0].portName == "http-metrics")
+            ] | all_c(. == true)
+          ' "$inspection/package.yaml"
+          ./zarf tools yq -e 'select((.kind == "Deployment") and (.metadata.name == "podinfo"))' \
+            "$inspection/manifests.yaml" > "$inspection/deployment.yaml"
+          ./zarf tools yq -e '
+            .spec.template.spec.containers[0] |
+            [
+              (.image == "ghcr.io/stefanprodan/podinfo:6.7.1"),
+              (.securityContext.runAsNonRoot == true),
+              (.securityContext.allowPrivilegeEscalation == false),
+              (.ports | any_c((.name == "http-metrics") and (.containerPort == 9797)))
+            ] | all_c(. == true)
+          ' "$inspection/deployment.yaml"
+          cmp docs/configuration.md "$inspection/podinfo-documentation/configuration.md"
+          cmp docs/justifications.md "$inspection/podinfo-documentation/justifications.md"
+
+#### Template CI: Remove this block and both CI task calls when building a package ####
 
 # CI will execute the following (via uds-common/.github/workflows/callable-test.yaml) so they need to be here with these names
   - name: test-install
@@ -106,6 +177,7 @@ tasks:
     actions:
       - task: ci-setup # remove this when building a package
       - task: create-dev-package
+      - task: ci-check-package # remove this when building a package
       - task: setup:k3d-test-cluster
       - task: create-deploy-test-bundle
 

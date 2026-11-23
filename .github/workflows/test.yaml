@@ -27,10 +27,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
-      - name: test-flavor
-        uses: defenseunicorns/uds-common/.github/actions/test-flavor@807de6f4efca9f51ee5e8d3e466d5f089c9eaab8 # v1.34.1
+      - name: Read supported flavors from the last release
         id: test-flavor
+        shell: bash
+        run: |
+          set -euo pipefail
+          release=$(git for-each-ref --count=1 --sort=-creatordate --format='%(refname)' 'refs/tags/v*')
+          if [[ -z "$release" ]]; then
+            echo "upgrade-flavors=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          flavors=$(git show "${release}:zarf.yaml" |
+            yq -r '.components[] | (.selector.flavor // .only.flavor) | select(. != null)' |
+            sort -u | paste -sd, -)
+          echo "upgrade-flavors=$flavors" >> "$GITHUB_OUTPUT"
     outputs:
       upgrade-flavors: ${{ steps.test-flavor.outputs.upgrade-flavors }}
 
@@ -43,6 +57,7 @@ jobs:
         flavor: [upstream]
     uses: defenseunicorns/uds-common/.github/workflows/callable-test.yaml@807de6f4efca9f51ee5e8d3e466d5f089c9eaab8 # v1.34.1
     with:
+      udsCliVersion: "0.42.0"
       timeout: 30
       options: --set BASE_REPO="ghcr.io/uds-packages"
       runsOn: appstore-4-core-amd64

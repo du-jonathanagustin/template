@@ -1,22 +1,19 @@
 # Copyright #TEMPLATE_COPYRIGHT_YEAR# Defense Unicorns
 # SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
 
-# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/zarf/main/zarf.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/zarf-dev/zarf/e62a47c31c2a10854bd3f9d64f31345dffa26c68/src/pkg/schema/zarf-v1beta1-package-schema.json
+apiVersion: zarf.dev/v1beta1
 kind: ZarfPackageConfig
 metadata:
   name: #TEMPLATE_APPLICATION_NAME#
   description: "UDS #TEMPLATE_APPLICATION_DISPLAY_NAME# package"
-  version: "dev"
+  version: "0.0.0-dev"
   annotations:
     dev.uds.title: #TEMPLATE_APPLICATION_DISPLAY_NAME#
-    dev.uds.tagline: ""
-    dev.uds.categories: ""
-    dev.uds.keywords: ""
-    dev.uds.icon: ""
 
-variables:
-  - name: DOMAIN
-    default: "uds.dev"
+attachments:
+  configuration: docs/configuration.md
+  justifications: docs/justifications.md
 
 values:
   files:
@@ -25,14 +22,14 @@ values:
 
 components:
   - name: #TEMPLATE_APPLICATION_NAME#
-    required: true
     description: "Deploy #TEMPLATE_APPLICATION_DISPLAY_NAME#"
     import:
-      path: common
-    only:
+      local:
+        - path: common/zarf.yaml
+    selector:
       flavor: upstream
     charts:
       - name: #TEMPLATE_APPLICATION_NAME#
         valuesFiles:
-          - values/upstream-values.yaml
+          - path: values/upstream-values.yaml
     images: []

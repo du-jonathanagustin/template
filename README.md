@@ -5,6 +5,10 @@ A starting point for creating a new [UDS Package](https://docs.defenseunicorns.c
 > [!TIP]
 > Found an issue with the template or want to contribute? See [Contributing](#contributing).
 
+The Zarf package and its shared component use the `zarf.dev/v1beta1` schema.
+Use UDS CLI 0.42.0 (Zarf 1.0.1) to build the package with the same schema
+and toolchain used by the template's Podinfo test.
+
 ## Creating a package from this template
 
 The canonical guide for turning this scaffolding into a working package is [Create a UDS Package](https://docs.defenseunicorns.com/core/how-to-guides/packaging-applications/create-uds-package/). It walks through the placeholder substitution, Zarf and chart configuration, the `Package` CR, and the dev/test bundle.
