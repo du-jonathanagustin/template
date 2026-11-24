@@ -52,6 +52,11 @@ Run `uds run test:all` to check health, ingress, and browser behavior. Browser t
 default to Docker with Chromium and Firefox. See [Playwright testing](./docs/playwright-testing.md) for
 runner, browser, and Playwright version configuration.
 
+Run `uds run test-install` to verify a fresh deployment. After publishing
+a predecessor, run `uds run test-upgrade` to verify the candidate over
+that release. Add upgrade checks for persisted data, configuration, or
+integrations when the package owns those contracts.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).

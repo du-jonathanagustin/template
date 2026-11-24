@@ -15,8 +15,9 @@ The canonical guide for turning this scaffolding into a working package is [Crea
 
 After working through that guide, finish the template-specific cleanup below.
 
-The [dev/test bundle](./bundle/bundle.uds.hcl).
-Use UDS CLI v0.40.0 or newer. The tasks enable Next through `NEXT_MODE=true`.
+The [dev/test bundle](./bundle/bundle.uds.hcl) uses UDS Next mode through
+`NEXT_MODE=true`. The release, lint, and test workflows use UDS CLI 0.42.0
+and its embedded Zarf 1.0.1 so they read the same package format.
 
 ## Template cleanup checklist
 
@@ -30,11 +31,18 @@ These items are specific to this template repo and aren't covered in the canonic
 - [ ] Customize [`docs/configuration.md`](./docs/configuration.md) with supported application settings and deployment examples.
 - [ ] Remove the `ci-setup` task from [`tasks.yaml`](./tasks.yaml). It exists only so this template's own CI can validate the scaffolding using podinfo. To remove:
   - Delete the block between the two `#### Template CI: Remove ... ####` comment markers, including the markers.
-  - Delete the `- task: ci-setup` call under `test-install`.
+  - Delete the `ci-setup` and `ci-check-package` calls under `test-install` because both are specific to the Podinfo fixture.
 - [ ] `mv README-template.md README.md` and customize for your package.
 - [ ] Update `CODEOWNERS` following the guidance in `CODEOWNERS-template.md`, then `rm CODEOWNERS-template.md`.
 - [ ] If your application has a UI, rename `tests/template-application-name.test.ts` to `tests/<app-name>.test.ts` and customize it for your app. If your application has no UI, delete `tests/template-application-name.test.ts`, `tests/auth.setup.ts`, and the `ui` task in [`tasks/test.yaml`](./tasks/test.yaml).
 - [ ] When ready to publish your first release, uncomment [`releaser.yaml`](./releaser.yaml) and set the version. Update the verification example in `README.md` to match. Add `registry1` / `unicorn` entries if you've added those flavors.
+
+Keep `test-install` and `test-upgrade` in [`tasks.yaml`](./tasks.yaml)
+so CI can build and deploy the candidate on a fresh cluster and over a
+released predecessor when one exists. Put reusable health and journey
+checks in [`tasks/test.yaml`](./tasks/test.yaml) so both paths exercise
+the same package behavior.
+[UDS package testing](https://docs.defenseunicorns.com/core/v1-17/how-to-guides/packaging-applications/package-testing/)
 
 See [Playwright testing](./docs/playwright-testing.md) for browser test configuration.
 
