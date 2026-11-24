@@ -37,7 +37,7 @@ as the package source.
 
 ## Local development
 
-Requires [UDS CLI](https://github.com/defenseunicorns/uds-cli?tab=readme-ov-file#install) v0.40.0 or newer.
+Requires [UDS CLI](https://github.com/defenseunicorns/uds-cli?tab=readme-ov-file#install) v0.42.0 or newer.
 See the [UDS CLI Next documentation](https://docs.defenseunicorns.com/cli/v0-40/reference/next-mode/) for usage and configuration.
 
 ```bash
