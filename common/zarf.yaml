@@ -1,42 +1,43 @@
 # Copyright #TEMPLATE_COPYRIGHT_YEAR# Defense Unicorns
 # SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
 
-# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/zarf/main/zarf.schema.json
-kind: ZarfPackageConfig
+# yaml-language-server: $schema=https://raw.githubusercontent.com/zarf-dev/zarf/refs/heads/main/src/pkg/schema/zarf-v1beta1-component-schema.json
+apiVersion: zarf.dev/v1beta1
+kind: ZarfComponentConfig
 metadata:
-  name: #TEMPLATE_APPLICATION_NAME#-common
+  name: #TEMPLATE_APPLICATION_NAME#
   description: "UDS #TEMPLATE_APPLICATION_DISPLAY_NAME# Common Package"
 
-components:
-  - name: #TEMPLATE_APPLICATION_NAME#
-    required: true
-    charts:
-      - name: uds-#TEMPLATE_APPLICATION_NAME#-config
-        namespace: #TEMPLATE_APPLICATION_NAME#
-        version: 0.1.0
-        localPath: ../chart
-        values:
-          - sourcePath: ".uds-#TEMPLATE_APPLICATION_NAME#-config"
-            targetPath: .
-      - name: #TEMPLATE_APPLICATION_NAME#
-        namespace: #TEMPLATE_APPLICATION_NAME#
+component:
+  charts:
+    - name: uds-#TEMPLATE_APPLICATION_NAME#-config
+      namespace: #TEMPLATE_APPLICATION_NAME#
+      local:
+        path: ../chart
+      values:
+        - sourcePath: ".uds-#TEMPLATE_APPLICATION_NAME#-config"
+          targetPath: .
+    - name: #TEMPLATE_APPLICATION_NAME#
+      namespace: #TEMPLATE_APPLICATION_NAME#
+      git:
         url: #TEMPLATE_CHART_REPO#
-        gitPath: chart
-        version: 1.2.3
-        valuesFiles:
-          - ../values/common-values.yaml
-        values:
-          - sourcePath: ".#TEMPLATE_APPLICATION_NAME#"
-            targetPath: .
-            # Review chart-specific image and integration settings when selecting the application.
-            excludePaths:
-              - ".#TEMPLATE_APPLICATION_NAME#.image"
-              - ".#TEMPLATE_APPLICATION_NAME#.imagePullSecrets"
-              - ".#TEMPLATE_APPLICATION_NAME#.global.imageRegistry"
-              - ".#TEMPLATE_APPLICATION_NAME#.global.imagePullSecrets"
-              - ".#TEMPLATE_APPLICATION_NAME#.securityContext"
-              - ".#TEMPLATE_APPLICATION_NAME#.containerSecurityContext"
-              - ".#TEMPLATE_APPLICATION_NAME#.podSecurityContext"
-              - ".#TEMPLATE_APPLICATION_NAME#.crds"
-              - ".#TEMPLATE_APPLICATION_NAME#.installCRDs"
-              - ".#TEMPLATE_APPLICATION_NAME#.ingress"
+        path: chart
+        ref:
+          tag: "1.2.3"
+      valuesFiles:
+        - path: ../values/common-values.yaml
+      values:
+        - sourcePath: ".#TEMPLATE_APPLICATION_NAME#"
+          targetPath: .
+          # Review chart-specific image and integration settings when selecting the application.
+          excludePaths:
+            - ".#TEMPLATE_APPLICATION_NAME#.image"
+            - ".#TEMPLATE_APPLICATION_NAME#.imagePullSecrets"
+            - ".#TEMPLATE_APPLICATION_NAME#.global.imageRegistry"
+            - ".#TEMPLATE_APPLICATION_NAME#.global.imagePullSecrets"
+            - ".#TEMPLATE_APPLICATION_NAME#.securityContext"
+            - ".#TEMPLATE_APPLICATION_NAME#.containerSecurityContext"
+            - ".#TEMPLATE_APPLICATION_NAME#.podSecurityContext"
+            - ".#TEMPLATE_APPLICATION_NAME#.crds"
+            - ".#TEMPLATE_APPLICATION_NAME#.installCRDs"
+            - ".#TEMPLATE_APPLICATION_NAME#.ingress"

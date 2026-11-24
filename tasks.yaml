@@ -74,15 +74,12 @@ tasks:
             "
 
           # Patch common/zarf.yaml
-          ./zarf tools yq -i ".components[0].charts[1].version = \"${CHART_VERSION}\"" common/zarf.yaml
-          ./zarf tools yq -i 'del(.components[0].charts[1].gitPath)' common/zarf.yaml
-          ./zarf tools yq -i '.components[0].charts[1].values[0].excludePaths |= (. + [".podinfo.redis", ".podinfo.serviceAccount.imagePullSecrets"] | unique)' common/zarf.yaml
+          ./zarf tools yq -i "del(.component.charts[1].git) |
+            .component.charts[1].oci = {\"url\": \"${CHART_URL}\", \"ref\": {\"tag\": \"${CHART_VERSION}\"}}" common/zarf.yaml
+          ./zarf tools yq -i '.component.charts[1].values[0].excludePaths |= (. + [".podinfo.redis", ".podinfo.serviceAccount.imagePullSecrets"] | unique)' common/zarf.yaml
 
           # Patch zarf.yaml, set podinfo image
-          ./zarf tools yq -i "(.components[] | select(.only.flavor == \"upstream\")).images = [\"${APP_IMAGE}\"]" zarf.yaml
-          ./zarf tools yq -i 'del(.components[] | select(.only.flavor == "unicorn"))' zarf.yaml
-          ./zarf tools yq -i 'del(.components[] | select(.only.flavor == "registry1"))' zarf.yaml
-          ./zarf tools yq -i '.variables = [{"name": "DOMAIN", "default": "uds.dev"}]' zarf.yaml
+          ./zarf tools yq -i "(.components[] | select(.selector.flavor == \"upstream\")).images = [{\"name\": \"${APP_IMAGE}\"}]" zarf.yaml
 
           # Patch uds-package.yaml: add SSO + Authservice (podinfo has no native OIDC), allow-all network policy
           perl -i -0pe 's|(  # Customize network policies and expose services via istio)|  sso:\n    - name: Podinfo\n      clientId: uds-podinfo\n      redirectUris:\n        - "https://podinfo.uds.dev/login"\n      enableAuthserviceSelector:\n        app.kubernetes.io/name: podinfo\n$1|' chart/templates/uds-package.yaml
