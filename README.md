@@ -12,7 +12,7 @@ The canonical guide for turning this scaffolding into a working package is [Crea
 After working through that guide, finish the template-specific cleanup below.
 
 The [dev/test bundle](./bundle/bundle.uds.hcl).
-Use UDS CLI v0.40.0 or newer. The tasks enable Next through `NEXT_MODE=true`.
+Use UDS CLI v0.42.0 or newer. The tasks enable Next through `NEXT_MODE=true`.
 
 ## Template cleanup checklist
 
