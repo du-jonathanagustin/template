@@ -12,7 +12,7 @@ on:
 
 jobs:
   validate:
-    uses: defenseunicorns/uds-common/.github/workflows/callable-lint.yaml@807de6f4efca9f51ee5e8d3e466d5f089c9eaab8 # v1.34.1
+    uses: du-jonathanagustin/uds-common/.github/workflows/callable-lint.yaml@997fde54fd7f817761c73f6668b548faffc73fe0 # Zarf v1 workflow branch
     with:
       # Schema freshness requires a populated package and generated schema.
       values-check: false
