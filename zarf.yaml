@@ -15,9 +15,6 @@ metadata:
     dev.uds.keywords: ""
     dev.uds.icon: ""
 
-attachments:
-  configuration: docs/configuration.md
-
 values:
   files:
     - zarf-values.yaml
@@ -36,3 +33,6 @@ components:
         valuesFiles:
           - path: values/upstream-values.yaml
     images: []
+
+attachments:
+  configuration: docs/configuration.md
