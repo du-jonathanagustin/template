@@ -1,7 +1,7 @@
 # Copyright #TEMPLATE_COPYRIGHT_YEAR# Defense Unicorns
 # SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
 
-# yaml-language-server: $schema=https://raw.githubusercontent.com/zarf-dev/zarf/v1.0.1/src/pkg/schema/zarf-v1beta1-package-schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/zarf-dev/zarf/refs/heads/main/src/pkg/schema/zarf-v1beta1-package-schema.json
 apiVersion: zarf.dev/v1beta1
 kind: ZarfPackageConfig
 metadata:
